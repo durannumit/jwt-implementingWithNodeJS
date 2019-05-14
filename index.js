@@ -2,22 +2,45 @@
 const express = require('express');
 const app = express();
 const port = 5000;
-const jwt = require('jwt-simple'); //new
+const jwt = require('jwt-simple'); 
 const bcrypt = require('bcrypt');
 const Users = require('./data/users.json');
 const bodyParser = require('body-parser');
+// ***** new *****
+const apiMiddleware = (req, res, next) => {
+  // get the header token
+  let token = req.headers['authorization'];
+if (token) {
+    // attempt to decode the token
+    try {
+      let decoded = jwt.decode(token, app.get('jwtTokenSecret'));
+// set value
+      req.user = {
+        id: decoded.iss,
+        email: decoded.email
+      };
+// proceed with next operation
+      next();
+    } catch (err) {
+      res.status(400).send({
+        error: `Invalid or missing token.`
+      });
+    }
+  } else {
+    res.status(401).send({
+      error: `Invalid or missing token.`
+    });
+  }
+};
 app.use(bodyParser.json());
-app.set('jwtTokenSecret', 'expressjs-api-secret'); // new
-//Endpoints
+app.set('jwtTokenSecret', 'expressjs-api-secret');
 app.get('/', (req, res) => {
   let dateTime = new Date();
- 
-  res.send({
+res.send({
     time: dateTime.getTime()
   });
 });
-// ***** updated post request *****
-app.post('/auth/login', (req, res) => { 
+app.post('/auth/login', (req, res) => {
   // validate if payload contains data
   if (req.body.email && req.body.password) {
 // find the user in the json data
@@ -59,6 +82,16 @@ if (findUser) {
       error: `Invalid email and/or password.`
     });
   }
+});
+// ***** new *****
+app.get('/auth/verify', apiMiddleware, (req, res) => {
+  res.send({
+    data: true
+  });
+});
+// ***** new *****
+app.get('/users/me', apiMiddleware, (req, res) => {
+  res.send(req.user);
 });
 
 
